@@ -1,0 +1,257 @@
+<!doctype html>
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <meta charset="utf-8"/>
+    <title>Retinopathy Blindness Detection</title>
+    <link type="text/css" rel="stylesheet" href="/static/style.css" media="all"/>
+    <link type="text/css" rel="stylesheet"
+          href="https://fonts.googleapis.com/css?family=Roboto+Condensed:300,700|Roboto+Slab:700&amp;subset=latin-ext"
+          media="all"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<style>
+.dropdown {
+  display:block;
+  float: none;
+  text-align:right;
+  overflow: hidden;
+
+}
+
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+  right:50px;
+}
+
+.dropdown-content a {
+  float: none;
+  color: black;
+  padding: 12px 16px;
+  display: block;
+  text-align: right;
+}
+
+.dropdown-content a:hover {
+  background-color: #ddd;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+  margin-right:-30px;
+  margin-top:2px;
+}
+#invalidCredentialsMsg{
+    display:none;
+}
+#data{
+ padding-top:30px;
+ margin-left:100Px;
+ margin-right:100Px;
+ padding-bottom:100px;
+
+}
+#data-content {
+  font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+#data-content td, #data-content th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+#data-content tr{
+    text-align=center;
+}
+
+#data-content tr:nth-child(even){background-color: #e2f2f2;}
+
+#data-content th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  background-color: #0AC4C4;
+  color: white;
+}
+.pic{
+cursor:pointer;
+}
+#heading{
+    font-family: 'Open Sans', sans-serif;
+  color: #555;
+  text-decoration: none;
+  text-transform: uppercase;
+  font-size: 50px;
+  font-weight: 800;
+  letter-spacing: -3px;
+  line-height: 1;
+  text-shadow: #EDEDED 3px 2px 0;
+}
+
+</style>
+<body onload="load()">
+
+<!-- Login HTML end -->
+<div class="full-site">
+    <div class="full-nav">
+        <header class="navigation">
+              <div class="dropdown" id="loginDropdown">
+                 <p align="right" id="message" style="color:#0AC4C4; font-size:25px;margin:0px 0px -20px 0px;
+                    cursor: pointer; font-family: Roboto Condensed,sans-serif;font-style: normal;
+                    font-weight: 700; display:inline-block;"> Welcome
+                    <i class="fa fa-caret-down"></i>
+                 </p>
+                <div class="dropdown-content">
+                    <a href= "{% url 'home' %}" >Home</a>
+                    <a href="{% url 'logout' %}" id="logout">Logout</a>
+                </div>
+              </div>
+            <center><h2>Retinopathy Blindness Detection </h2></center><br>
+        </header>
+    </div>
+    <div class="wrapper" style="padding-top:80px;">
+
+
+        <header>
+            <center>
+            <div id="chart_div" style="width: 900px; height: 500px;"></div>
+            </center>
+        </header>
+
+
+        <section class="intro-description">
+            <div id="data">
+                <p id="heading"> Previous Results</p>
+
+            </div>
+        </section>
+    </div>
+
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script>
+            // for displaying the correct output image
+var loadFile = function(event) {
+	var image = document.getElementById('output');
+	image.src = URL.createObjectURL(event.target.files[0]);
+};
+
+function load(){
+    console.log("Loaded")
+    $.ajax({
+			         type:"POST",
+			        url: "{% url 'session' %}",
+			        async: true,
+			        data: {
+			             csrfmiddlewaretoken: '{{ csrf_token }}',
+			        },
+			            success: function(data){
+			                if(data.split(",")[0]==1)
+			                {
+			                    $('#message').text("Welcome, "+data.split(",")[1]+" ");
+			                    var node = document.createElement("I");
+			                    document.getElementById("message").appendChild(node);
+			                    var tag_name = document.getElementsByTagName("i")[0];
+                                var attr =   document.createAttribute("class");
+                                attr.value = "fa fa-caret-down";
+                                tag_name.setAttributeNode(attr);
+			                    document.getElementById("loginDropdown").style.display="block";
+			                }
+			            },
+			            error: function(data){
+			                alert("Error occurred, please try again later...")
+			            }
+			    });
+
+			    $.ajax({
+			         type:"POST",
+			        url: "{% url 'getData' %}",
+			        async: true,
+			        data: {
+			             csrfmiddlewaretoken: '{{ csrf_token }}',
+			        },
+			            success: function(data){
+			                $('#data').append(data.split("@")[0]);
+
+			                drawVisualization(data.split("@")[1]);
+			                var elements = document.getElementsByClassName("pic");
+
+                            for (var i = 0; i < elements.length; i++) {
+                                elements[i].addEventListener('click', myFunction, false);
+                            }
+			            },
+			            error: function(data){
+			                alert("Error occurred, please try again later...")
+			            }
+			    });
+}
+            </script>
+<!--  load Pic Script-->
+        <script>
+            var myFunction = function() {
+                $.ajax({
+			         type:"POST",
+			        url: "{% url 'getPic' %}",
+			        async: true,
+			        data: {
+			             csrfmiddlewaretoken: '{{ csrf_token }}',
+			             img: $(this).text()
+			        },
+			            success: function(data){
+                            window.open(data,'_blank');
+			            },
+			            error: function(data){
+			                alert("Error occurred, please try again later...")
+			            }
+			    });
+            };
+
+        </script>
+        <script>
+            google.charts.load('current', {'packages':['corechart']});
+            google.charts.setOnLoadCallback(drawVisualization);
+            function drawVisualization(data) {
+                chartdata = [["images","severity"]];
+                data = data.split(",");
+                for(var i=0;i<data.length-1;i++){
+                    chartdata.push([data[i].split(":")[0], parseInt(data[i].split(":")[1])])
+                }
+                var data = google.visualization.arrayToDataTable(chartdata);
+
+                var options = {
+                  title : 'Change in severity',
+                  vAxis: {title: 'severity', ticks: [0,1,2,3,4,5]},
+                  hAxis: {title: 'images'},
+                  seriesType: 'line'
+                };
+
+                    var chart = new google.visualization.ComboChart(document.getElementById('chart_div'));
+                    chart.draw(data, options);
+                }
+
+        </script>
+
+
+        <footer>
+            <section class="primary-footer">
+                <div class="footer-container">
+                    <div class="footer-block" >
+                        <h2><span style="color: #ffffff;"> Done By</span></h2>
+                        <ul class="social-links">
+                            <li><span style="color: #ffffff;"><font size="5">Rahul Gampa</font></span></li>
+                            <li><span style="color: #ffffff;" ><font size="5">Kushika Nyati</font></span></li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </footer>
+    </div>
+</div>
+
+</body>
+</html>

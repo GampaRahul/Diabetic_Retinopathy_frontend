@@ -1,0 +1,704 @@
+<!doctype html>
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <meta charset="utf-8"/>
+    <title>Retinopathy Blindness Detection</title>
+    <link type="text/css" rel="stylesheet" href="/static/style.css" media="all"/>
+    <link type="text/css" rel="stylesheet"
+          href="https://fonts.googleapis.com/css?family=Roboto+Condensed:300,700|Roboto+Slab:700&amp;subset=latin-ext"
+          media="all"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<style>
+#mask {
+    display: none;
+    background: #000;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 10;
+    width: 100%;
+    height: 100%;
+    opacity: 0.8;
+    z-index: 999;
+}
+
+#login-box{
+	display:none;
+	background: #fff;
+	border: 2px solid #ddd;
+	float: left;
+	font-size: 1.2em;
+	position: fixed;
+	top: 50%; left: 50%;
+	z-index: 99999;
+	box-shadow: 0px 0px 10px #999;
+	-moz-box-shadow: 0px 0px 10px #999; /* Firefox */
+    -webkit-box-shadow: 0px 0px 10px #999; /* Safari, Chrome */
+	border-radius:3px 3px 3px 3px;
+    -moz-border-radius: 3px; /* Firefox */
+    -webkit-border-radius: 3px; /* Safari, Chrome */
+}
+
+#button_close {
+	float: right;
+	margin: -28px -28px 0 0;
+}
+
+.form {
+  position: relative;
+  z-index: 1;
+  background: #FFFFFF;
+  max-width: 360px;
+  margin: 0 auto;
+  padding: 45px;
+  text-align: center;
+  box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.2), 0 5px 5px 0 rgba(0, 0, 0, 0.24);
+}
+.form input {
+  font-family: "Roboto", sans-serif;
+  outline: 0;
+  background: #f2f2f2;
+  width: 100%;
+  border: 0;
+  margin: 0 0 15px;
+  padding: 15px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+.form button {
+  font-family: "Roboto", sans-serif;
+  text-transform: uppercase;
+  outline: 0;
+  background: #0AC4C4;
+  width: 100%;
+  border: 0;
+  padding: 15px;
+  color: #FFFFFF;
+  font-size: 14px;
+  -webkit-transition: all 0.3 ease;
+  transition: all 0.3 ease;
+  cursor: pointer;
+}
+.form button:hover,.form button:active,.form button:focus {
+  background: #0A8282;
+}
+.form .message {
+  margin: 15px 0 0;
+  color: #b3b3b3;
+  font-size: 12px;
+}
+.form .message a {
+  color: #0AC4C4;
+  text-decoration: none;
+}
+.form .register-form {
+  display: none;
+}
+
+.dropdown {
+  float: right;
+  text-align:right;
+  overflow: hidden;
+
+}
+
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+  right:50px;
+}
+
+.dropdown-content a {
+  float: none;
+  color: black;
+  padding: 12px 16px;
+  display: block;
+  text-align: right;
+}
+
+.dropdown-content a:hover {
+  background-color: #ddd;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+  margin-right:-30px;
+}
+#invalidCredentialsMsg{
+    display:none;
+}
+#usernameDisplay{
+    display:none;
+}
+
+
+
+</style>
+<body onload="load()">
+<!-- Login HTML -->
+<div id="login-box" class="login-popup">
+    <a href="#" class="close" id="button_close"><img src="/static/close_pop.png" class="btn_close" title="Close Window"
+                                                     alt="Close"/></a>
+    <div class="form">
+        <form class="register-form">
+            <input type="text" placeholder="Name" id="sUpName" autocomplete="off"/>
+            <input type="email" placeholder="Email address" id="sUpId" autocomplete="off"/>
+            <input type="password" placeholder="Password" id="sUpPwd"/>
+            <input type="button" onclick="signUp()" style="background: #0AC4C4;" value="create">
+            <p class="message">Already registered? <a href="#" class="SinEntry">Sign In</a></p>
+        </form>
+        <form class="login-form">
+            <input type="text" placeholder="Username" id="sInId"/>
+            <input type="password" placeholder="Password" id="sInPwd"/>
+            <div id="tooltip"></div>
+            <input type="button" onclick="signIn()" style="background: #0AC4C4;" value="login">
+            <p class="message">Not registered? <a href="#">Create an account</a></p>
+        </form>
+    </div>
+</div>
+<!-- Login HTML end -->
+<div class="full-site">
+    <div class="full-nav">
+        <header class="navigation">
+            <div style="height:40px;" id="usernameDisplay">
+                <div class="dropdown" id="loginDropdown">
+                    <p align="right" id="message" style="color:#0AC4C4; font-size:25px;margin:0px 0px 0px 0px;
+                    cursor: pointer; font-family: Roboto Condensed,sans-serif;font-style: normal;
+                    font-weight: 700;"> Welcome
+                        <i class="fa fa-caret-down"></i>
+                    </p>
+                    <div class="dropdown-content">
+                        <a href="#" id="history">Previous Results</a>
+                        <a href="{% url 'logout' %}" id="logout">Logout</a>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align:right; display:none;" id="l-btn">
+                <p style="display:inline-block;">
+                    <a href="#login-box" class="login-window" id="login-button"
+                       style="color:#0AC4C4; font-size:25px;margin:0px 0px -20px 0px;">
+                        Login / Sign Up
+                    </a>
+                </p>
+            </div>
+            <center><h2>Retinopathy Blindness Detection </h2></center>
+            <br>
+        </header>
+    </div>
+
+    <div class="wrapper">
+
+
+        <header class="page-header right-image">
+            <div class="image-block">
+                <img height="500" src="/static/eye.jpg" width="750"/>
+
+
+            </div>
+            <div class="text-container">
+                <div class="text-block">
+                    <h1>Diabetes and Your Eyes</h1>
+                    <a class="linkToDetector" href="#retinopathy-predictor"><p>Go to Retinopathy Detector &rarr;</p></a>
+                </div>
+            </div>
+
+        </header>
+
+
+        <section class="intro-description">
+
+            <section class="image-text-container">
+                <div class="left-content">
+                    <h3>What Is Diabetes-related Eye Disease?</h3>
+                </div>
+                <div class="description">
+                    <p>If you have diabetes, prevention of eye diseases related to diabetes is a priority.
+                        Diabetes-related eye disease can cause you to have trouble reading, seeing faces across the
+                        room,
+                        seeing at night, or even blindness. There are two forms of diabetes-related eye disease:</p>
+
+
+                    <p><strong>Diabetes-related retinopathy </strong>occurs when small blood
+                        vessels leak and bleed in the retina. The retina is layer of the eye that acts like the film in
+                        the camera of the eye to help you see. Diabetes-related retinopathy is a leading cause of
+                        blindness
+                        in American adults and it affects over one in four of those living with diabetes,
+                        while 4% have severe cases of retinopathy.</p>
+
+
+                    <p class="rtecenter"><img height="366" src="/static/retinopathy.png" width="270"/></p>
+                    <p><strong>Diabetes-related macular edema</strong> is a swelling that can occur with retinopathy.
+                        It occurs when the small blood vessels in the center of the retina, called the macula, become
+                        leaky
+                        and cause the retina to swell. It can cause your vision to become blurry.</p>
+
+
+                    <p class="rtecenter"><img height="366" src="/static/macular-edema.png" width="270"/></p>
+                    <p class="rtecenter"><strong>The two photos at right show damage to the retina from diabetes-related
+                        eye disease:</strong></p>
+                    <p class="rtecenter"><img height="173" src="/static/retina.png" width="721"/></p>
+                    <p>The good news is that diabetes-related eye disease can often be prevented or managed with
+                        a healthy lifestyle and annual visits to an eye doctor.</p>
+                </div>
+            </section>
+
+        </section>
+
+        <div class="image-text-all">
+
+
+            <section class="image-text-container">
+                <div class="left-content">
+                    <h3>What Other Eye Diseases Are Common Among People Living With Diabetes?</h3>
+                </div>
+                <div class="description">
+                    <p><strong>Cataract</strong>is the clouding of the lens in the eye, which can cause vision
+                        to become blurry and colors to become dull. Generally, cataracts are treatable with surgery that
+                        can help restore your vision. Aside from aging, diabetes is the most common risk factor for
+                        cataract.</p>
+                    <p class="rtecenter">
+                        <img height="366" src="/static/cataract.png" width="270"/></p>
+
+                    <p><strong>Glaucoma</strong>, “the silent thief of sight,” causes damage to the optic nerve
+                        and possible loss of side vision, usually caused by an increase in fluid pressure inside the
+                        eye.
+                        Vision loss will start without any noticeable symptoms leading to tunnel vision. If left
+                        untreated,
+                        glaucoma can lead to permanent loss of vision. Once vision is lost to glaucoma, it cannot be
+                        restored.
+                        Medications and surgery can delay progression of this disease.</p>
+
+                    <p class="rtecenter"><img height="366" src="/static/glaucoma.png" width="270"/></p>
+                </div>
+            </section>
+
+
+            <section class="image-text-container">
+                <div class="left-content">
+                    <h3>What is Diabetes?</h3>
+                </div>
+
+                <div class="description">
+                    <p>Diabetes is a disease in which glucose levels in your blood
+                        (also known as blood sugar) are high. Blood glucose is your body’s main source of energy and you
+                        get it
+                        from the food you eat. Your body makes a hormone called insulin that helps glucose from food you
+                        eat get
+                        into your cells to be used for energy. If you have diabetes, your body may not make enough
+                        insulin or any
+                        insulin or your body is not able to use insulin well. This causes glucose to stay in your blood
+                        and not get to your cells for energy.</p>
+
+                    <p>Many people are able to live long and healthy lives with diabetes. You can manage diabetes
+                        through diet,
+                        exercise and taking medication as prescribed. Without management, the high glucose levels in
+                        your blood can cause
+                        damage to your heart, kidneys, feet, ears, and eyes. Staying healthy will make it easier for you
+                        to manage your
+                        diabetes and maintain good vision and eye health, allow you exercise, and follow the treatment
+                        advice of doctors.</p>
+
+                </div>
+            </section>
+
+
+            <section class="image-text-container">
+                <div class="left-content">
+                    <h3>How Common is Diabetes?</h3>
+                </div>
+                <div class="description">
+                    <p>You should know that you are not the only one out there living with diabetes. More than 30
+                        million people in the United States have diabetes. One in four do not know they have diabetes.
+                        Diabetes is more common among certain populations such as African Americans, Hispanics, American
+                        Indians, Asian Americans and Pacific Islanders.</p>
+                    <p>You are more likely to have diabetes if you are:</p>
+                    <ul>
+                        <li>45 or older</li>
+                        <li>have a family history of the disease</li>
+                        <li>high blood pressure</li>
+                        <li>have excess weight</li>
+                    </ul>
+                    <p>The good news is that you can manage diabetes by taking good care of yourself through healthy
+                        meal planning, regular exercise, and taking medication as prescribed.</p>
+                </div>
+            </section>
+
+
+            <section class="image-text-container" id="retinopathy-predictor">
+                <div class="left-content">
+                    <h3>Detect Retinopathy</h3>
+
+                    <p><input type="file" name="image" id="file" onchange="loadFile(event)"></p>
+                    <p><img id="output" width="200"/></p>
+                    <input type="button" value="Measure Severity" onclick="getValue()">
+                    <br><br>
+                    <input type="button" value="Previous Results" onclick="previousResults()">
+                </div>
+                <center>
+                    <div class="description">
+                        <div id="answer" style="display:none;">
+                            <p><img id="out" width="500"/></p>
+                            <input type="button" value="Save" onclick="save()">
+                        </div>
+                        <div class="ajaxProgress" style="float:center;">
+                            <h3>Please wait....</h3>
+                            <img src="{{ MEDIA_URL }}/static/load.gif" alt="loading"/>
+
+                        </div>
+                    </div>
+                </center>
+            </section>
+        </div>
+        <script>
+            // for displaying the correct output image
+var loadFile = function(event) {
+	var image = document.getElementById('output');
+	image.src = URL.createObjectURL(event.target.files[0]);
+
+};
+
+function load(){
+    console.log("Loaded")
+    $.ajax({
+			         type:"POST",
+			        url: "{% url 'session' %}",
+			        async: true,
+			        data: {
+			             csrfmiddlewaretoken: '{{ csrf_token }}',
+			        },
+			            success: function(data){
+			                if(data.split(",")[0]==1)
+			                {
+			                    $('#message').text("Welcome, "+data.split(",")[1]+" ");
+			                    var node = document.createElement("I");
+			                    document.getElementById("message").appendChild(node);
+			                    var tag_name = document.getElementsByTagName("i")[0];
+                                var attr =   document.createAttribute("class");
+                                attr.value = "fa fa-caret-down";
+                                tag_name.setAttributeNode(attr);
+			                    document.getElementById("usernameDisplay").style.display="block";
+			                    document.getElementById("l-btn").style.display="none";
+			                }
+			                else{
+			                    document.getElementById("l-btn").style.display="block";
+			                }
+			            },
+			            error: function(data){
+			                alert("Error occurred, please try again later...")
+			            }
+			    });
+
+    $('.ajaxProgress').hide()
+}
+
+function getValue(){
+        console.log("Predicting")
+        var ans_img = document.getElementById('out')
+        document.getElementById('answer').style.display="none";
+        if ($('#file')[0].files.length == 0) {
+            alert('Please Upload File');
+        }
+        else {
+        ans_img.src="";
+        $('.ajaxProgress').show()
+        console.log($('#file').val())
+		$.ajax({
+			type:"POST",
+			url: "{% url 'predicting' %}",
+			dataType: "json",
+			async: true,
+			data: {
+			    csrfmiddlewaretoken: '{{ csrf_token }}',
+                img : $('#file').val()
+			},
+			success: function(json){
+				$('.ajaxProgress').hide()
+				document.getElementById('answer').style.display="block";
+				if(json==0){
+                    //$("#value").attr("src", "/static/nodr.jpg")
+                    ans_img.src="/static/nodr.jpg";
+                    console.log("0")
+				}
+				else if(json==1){
+                    //$("#value").attr("src", "/static/mild.jpg")
+                    ans_img.src="/static/mild.jpg"
+                    console.log("1")
+				}
+				else if(json==2){
+                    //$('#value').attr("src", "/static/moderate.jpg")
+                    ans_img.src = "/static/moderate.jpg"
+                    console.log("2")
+				}
+				else if(json==3){
+                    //$("#value").attr("src", "/static/severe.jpg")
+                    ans_img.src="/static/severe.jpg"
+                    console.log("3")
+				}
+				else if(json==4){
+				    $("#value").attr("src", "/static/dr.jpg")
+				    ans_img.src="/static/dr.jpg"
+				    console.log("4")
+				}
+			},
+			error: function(json){
+			$('.ajaxProgress').hide()
+			    alert('Please Upload proper Image')
+			}
+		});
+		}
+		console.log($('#file').val())
+		console.log("Predicted")
+
+}
+
+
+        </script>
+
+        <script>
+            // For scrolling down to detection area
+$(document).ready(function() {
+$(".linkToDetector").click(function() {
+     $('html, body').animate({
+         scrollTop: $("#retinopathy-predictor").offset().top
+     }, 1000);
+ });
+});
+
+
+        </script>
+
+
+        <!-- Login UI Script -->
+        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+        <script type="text/javascript">
+$(document).ready(function() {
+	$('a.login-window').click(function() {
+		// Getting the variable's value from a link
+		var loginBox = $(this).attr('href');
+
+		//Fade in the Popup and add close button
+		$(loginBox).fadeIn(300);
+
+           $('#sInPwd').val("");
+           $('#sInId').val("");
+           $('#sUpName').val("");
+           $('#sUpId').val("");
+           $('#sUpPwd').val("");
+		//Set the center alignment padding + border
+		var popMargTop = ($(loginBox).height() + 24) / 2;
+		var popMargLeft = ($(loginBox).width() + 24) / 2;
+
+		$(loginBox).css({
+			'margin-top' : -popMargTop,
+			'margin-left' : -popMargLeft
+		});
+
+		// Add the mask to body
+		$('body').append('<div id="mask"></div>');
+		$('#mask').fadeIn(300);
+
+		return false;
+	});
+
+	// When clicking on the button close or the mask layer the popup closed
+	$('a.close, #mask').live('click', function() {
+	  $('#mask , .login-popup').fadeOut(300 , function() {
+		$('#mask').remove();
+	});
+	return false;
+	});
+	$('.message a').click(function(){
+	       $('#sInPwd').val("");
+           $('#sInId').val("");
+           $('#sUpName').val("");
+           $('#sUpId').val("");
+           $('#sUpPwd').val("");
+   $('form').animate({height: "toggle", opacity: "toggle"}, "slow");
+});
+});
+
+
+        </script>
+
+        <!--  Login/signUp Script-->
+        <script>
+            function signIn(){
+                //alert('Signed IN...'+document.getElementById("sInId").value)
+                document.getElementById("tooltip").style.display="none";
+                $.ajax({
+			            type:"POST",
+			            url: "{% url 'signIn' %}",
+			            async: true,
+			            data: {
+			                csrfmiddlewaretoken: '{{ csrf_token }}',
+                            email: $('#sInId').val(),
+                            pwd: $('#sInPwd').val()
+			            },
+			            success: function(data){
+			                if(data.split(",")[0]==1)
+			                {
+			                    $('a.close, #mask').trigger('click');
+			                    $('#message').text("Welcome, "+data.split(",")[1]+" ");
+			                    var node = document.createElement("I");
+			                    document.getElementById("message").appendChild(node);
+			                    var tag_name = document.getElementsByTagName("i")[0];
+                                var attr =   document.createAttribute("class");
+                                attr.value = "fa fa-caret-down";
+                                tag_name.setAttributeNode(attr);
+			                    document.getElementById("usernameDisplay").style.display="block";
+			                    document.getElementById("l-btn").style.display="none";
+			                }
+			                else if(data.split(",")[0]==0){
+			                document.getElementById("tooltip").style.display="block";
+			                document.getElementById("tooltip").style.color="red";
+			                $("#tooltip").text("Please enter correct credentials");
+			                }
+			            },
+			            error: function(data){
+			                alert("Error occurred, please try again later...")
+			            }
+			    });
+            }
+            function signUp(){
+                if($('#sUpPwd').val().length<7 || $('#sUpName').val().length<1 || $('#sUpId').val().length<1)
+                    alert("Please ensure you meet the following criteria\n1)Make sure Name has a value\n2)Make sure Email id has a value\n3)Enter password with length greater than or equal to 8 characters");
+                else{
+                $.ajax({
+			            type:"POST",
+			            url: "{% url 'signUp' %}",
+			            async: true,
+			            data: {
+			                csrfmiddlewaretoken: '{{ csrf_token }}',
+			                name: $('#sUpName').val(),
+                            email: $('#sUpId').val(),
+                            pwd: $('#sUpPwd').val()
+			            },
+			            success: function(data){
+			                if(data=="-1"){
+			                    alert("Email id already Exists please login or use other Email Id");
+			                    $('#sUpId').val("");
+                                $('#sUpPwd').val("");
+			                }
+			                else if(data==1)
+			                {
+			                    //$('a.close, #mask').trigger('click');
+			                    document.getElementById("tooltip").style.display="block";
+			                    document.getElementById("tooltip").style.color="green";
+			                    $("#tooltip").text("User Registered, Please Login");
+			                    $('a.SinEntry').trigger('click');
+			                }
+			                else if(data==0){
+			                }
+			            },
+			            error: function(data){
+			                alert("Error occurred, please try again later...")
+			            }
+			    });
+              }
+            }
+
+            $('#logout').click( function(){
+                 $('#message').text("Welcome, ");
+			     document.getElementById("usernameDisplay").style.display="none";
+			     document.getElementById("l-btn").style.display="block";
+			    });
+
+
+        </script>
+        <script>
+    function previousResults(){
+        $('#history').trigger('click');
+    }
+    $('#history').click( function(){
+                 $.ajax({
+			            type:"POST",
+			            url: "{% url 'history' %}",
+			            async: true,
+			            data: {
+			                csrfmiddlewaretoken: '{{ csrf_token }}'
+			            },
+			            success: function(data){
+			                if(data==0){
+			                alert("Please Login");
+			                $('a.login-window').trigger('click');
+			                }
+			                else{
+                                window.location.replace("{% url 'home' %}history")
+			                }
+			            }
+			    });
+			    return false;
+            });
+
+
+        </script>
+        <script>
+            function save(){
+            $('.ajaxProgress').show()
+                $.ajax({
+			            type:"POST",
+			            url: "{% url 'save' %}",
+			            async: true,
+			            data: {
+			                csrfmiddlewaretoken: '{{ csrf_token }}',
+			                img : $('#file').val()
+			            },
+			            success: function(data){
+			            $('.ajaxProgress').hide()
+                            if(data==0){
+                                alert("please Login")
+                            }else if(data==1){
+                                alert("Result saved Successfully")
+                            }
+			            },
+			            error : function(){
+			            $('.ajaxProgress').hide()
+			                alert("Some error occurred please try later..")
+			            }
+			    });
+
+            }
+
+
+        </script>
+
+        <footer>
+            <section class="primary-footer">
+                <div class="footer-container">
+                    <div class="footer-block">
+                        <div>
+                            <ul>
+                                <li>
+                                    <a href=" https://github.com/GampaRahul" style="color:white;font-size:30px">
+                                        <i class="fa fa-github" style="color:white;font-size:30px"
+                                           aria-hidden="true"></i>
+                                        Github
+                                    </a>
+                                    <br>
+                                </li>
+                                <li>
+                                    <a href=" https://www.linkedin.com/in/rahul-gampa-402293155"
+                                       style="color:white;font-size:30px">
+                                        <i class="fa fa-linkedin" style="color:white;font-size:30px"
+                                           aria-hidden="true"></i>
+                                        Gampa Rahul
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </footer>
+    </div>
+</div>
+
+</body>
+</html>
